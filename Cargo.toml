@@ -1,0 +1,21 @@
+[package]
+name = "xil-sys"
+version = "0.1.0"
+authors = ["Henri Lunnikivi <henri.lunnikivi@tuni.fi>"]
+description = "FFI bindings to a custom built libxil"
+edition = "2018"
+readme = "README.md"
+
+build = "build.rs"
+#links = "xil"
+
+[lib]
+name = "xil_sys"
+path = "lib.rs"
+
+[build-dependencies]
+bindgen = "0.53.1"
+
+[dependencies]
+# cty contains aliases to C-types for generated bindings
+cty = "0.2.1"

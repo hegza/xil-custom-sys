@@ -1,0 +1,21 @@
+#[target.armv7a-none-eabi]
+#linker = "arm-none-eabi-gcc"
+#rustflags = [
+#   "-C", "link-arg=-mcpu=cortex-a9",
+#   "-C", "link-arg=-mfpu=vfpv3",
+#   "-C", "link-arg=-mfloat-abi=soft", # hard-float is not supported by rustup yet, thus we use soft
+   #"-C", "link-arg=-nostartfiles", # added, seems like no effect
+   #"-C", "link-arg=-Wl,-build-id=none",
+   #"-C", "link-arg=-specs=../Led_blinker_nro2/src/Xilinx.spec",
+   #"-C", "link-arg=-Wl,-T",
+   #"-C", "link-arg=-Wl,../Led_blinker_nro2/src/lscript.ld", # linker-script
+   # Use Xilinx toolchain to assert cross-compilation compatibility
+   #"-C", "link-arg=-L/mnt/e/provisional/Software/Xilinx_WSL1/SDK/2019.1/gnu/aarch32/lin/gcc-arm-none-eabi/arm-none-eabi/libc/usr/lib",
+   #"-C", "link-arg=-lc",
+   #"-C", "link-arg=-lgcc",
+]
+
+[build]
+# Compile for Cortex-A9 (soft-float ABI). This is a Tier 3 target for Rust as per
+# https://forge.rust-lang.org/release/platform-support.html
+target = "armv7a-none-eabi"
