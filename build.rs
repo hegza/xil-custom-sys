@@ -1,13 +1,8 @@
 use std::env;
+use std::fs;
 use std::path::PathBuf;
 
 fn main() {
-    // Find the static library (libxil_sf.a) at root directory
-    println!("cargo:rustc-link-search=native=.");
-
-    // Link the libxil_sf.a in the local directory
-    println!("cargo:rustc-link-lib=static=xil_sf");
-
     // Tell cargo to invalidate the built crate whenever the wrapper changes.
     println!("cargo:rerun-if-changed=wrapper.h");
 
@@ -42,4 +37,23 @@ fn main() {
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
+
+    // Copy the libxil_sf.a library into the target directory to make it available
+    // to dependencies TODO: allow overriding the library via an environment
+    // variable
+    const LIB_NAME: &str = "libxil_sf.a";
+    let from: PathBuf = [&env::var("CARGO_MANIFEST_DIR").unwrap(), LIB_NAME]
+        .iter()
+        .collect();
+    let to: PathBuf = [&env::var("OUT_DIR").unwrap(), LIB_NAME].iter().collect();
+    fs::copy(from, to).unwrap();
+
+    // Find the static library (libxil_sf.a) in the out directory
+    println!(
+        "cargo:rustc-link-search=native={}",
+        env::var("OUT_DIR").unwrap()
+    );
+    // Link the libxil_sf.a in the out directory
+    // FIXME: I believe this does not currently link it right
+    println!("cargo:rustc-link-lib=static=xil_sf");
 }

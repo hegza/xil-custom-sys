@@ -2,12 +2,11 @@
 name = "xil-sys"
 version = "0.1.0"
 authors = ["Henri Lunnikivi <henri.lunnikivi@tuni.fi>"]
-description = "FFI bindings to a custom built libxil"
+description = "FFI bindings to a custom built libxil."
 edition = "2018"
 readme = "README.md"
 
-build = "build.rs"
-#links = "xil"
+links = "xil_sf"
 
 [lib]
 name = "xil_sys"

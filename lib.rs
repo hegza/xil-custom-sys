@@ -1,7 +1,5 @@
 #![no_std]
-
 #![feature(llvm_asm)]
-
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
@@ -70,14 +68,13 @@ pub unsafe fn XTtcPs_ClearInterruptStatus(InstancePtr: *mut XTtcPs, InterruptMas
  * @note		C-style signature:
  * void XTtcPs_Start(XTtcPs *InstancePtr)
  *
- *******************************************
+ ******************************************
  * **** */
 pub unsafe fn XTtcPs_Start(InstancePtr: *mut XTtcPs) {
     InstWriteReg(
         InstancePtr,
         XTTCPS_CNT_CNTRL_OFFSET as u32,
-        InstReadReg(InstancePtr, XTTCPS_CNT_CNTRL_OFFSET as u32)
-            & !XTTCPS_CNT_CNTRL_DIS_MASK,
+        InstReadReg(InstancePtr, XTTCPS_CNT_CNTRL_OFFSET as u32) & !XTTCPS_CNT_CNTRL_DIS_MASK,
     )
 }
 
