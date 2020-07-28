@@ -1,5 +1,5 @@
 #![no_std]
-#![feature(llvm_asm)]
+#![feature(asm)]
 // Allow C-style conventions
 #![allow(non_upper_case_globals, non_camel_case_types, non_snake_case)]
 #![allow(clippy::redundant_static_lifetimes)]
@@ -29,27 +29,40 @@ pub unsafe fn Xil_ExceptionDisable() {
 /// # Safety
 /// Writing to a register is unsafe.
 pub unsafe fn Xil_ExceptionEnableMask(Mask: u32) {
-    // TODO: Xil_ExceptionEnableMask and Xil_ExceptionDisableMask can be migrated to
-    // the new inline assembly described in RFC 2873, but is now using the old
-    // LLVM inline assembly, to confirm a successful port from Xilinx own library.
-    // https://blog.rust-lang.org/inside-rust/2020/06/08/new-inline-asm.html
+    let mut v: u32;
+    // Load cpsr from coprocessor register to `v`
+    asm!(
+        "mrs {v}, cpsr",
+        v = out(reg) v,
+    );
 
-    let reg: u32;
-    // Load from coprocessor register cpsr to `reg`
-    llvm_asm!("mrs $0, cpsr" : "=r"(reg) : /* no in */ : /* no clobber */ : /* no params */ );
+    // Set the exception mode mask
+    v &= !((Mask) & XIL_EXCEPTION_ALL);
 
-    // Set the flag and write back to coprocessor
-    llvm_asm!("msr cpsr, $0" : /* no out */ : "r"((reg) & !((Mask) & XIL_EXCEPTION_ALL)) : /* no clobber */ : "volatile");
+    // Write back to coprocessor
+    asm!(
+        "msr cpsr, {v}",
+        v = in(reg) v,
+    );
 }
 /// # Safety
 /// Writing to a register is unsafe.
 pub unsafe fn Xil_ExceptionDisableMask(Mask: u32) {
-    let reg: u32;
-    // Load from coprocessor register cpsr to `reg`
-    llvm_asm!("mrs $0, cpsr" : "=r"(reg) : /* no in */ : /* no clobber */ : /* no params */ );
+    let mut v: u32;
+    // Load cpsr from coprocessor register to `v`
+    asm!(
+        "mrs {v}, cpsr",
+        v = out(reg) v,
+    );
 
-    // Set the flag and write back to coprocessor
-    llvm_asm!("msr cpsr, $0" : /* no out */ : "r"((reg) | ((Mask) & XIL_EXCEPTION_ALL)) : /* no clobber */ : "volatile");
+    // Unset the exception mode mask
+    v |= (Mask) & XIL_EXCEPTION_ALL;
+
+    // Write back to coprocessor
+    asm!(
+        "msr cpsr, {v}",
+        v = in(reg) v,
+    );
 }
 
 /// Read interrupt status
