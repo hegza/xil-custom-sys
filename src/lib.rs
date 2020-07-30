@@ -1,11 +1,16 @@
 #![no_std]
-#![feature(asm)]
+#![feature(asm, c_variadic, associated_type_defaults)]
 // Allow C-style conventions
 #![allow(non_upper_case_globals, non_camel_case_types, non_snake_case)]
 #![allow(clippy::redundant_static_lifetimes)]
 
 // Include the generated bindings
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+
+mod print;
+
+/// Re-export of efficient Xilinx implementation of print for Cortex-A9.
+pub use print::*;
 
 pub const XPAR_XGPIOPS_0_INTR: u32 = XPS_GPIO_INT_ID;
 pub const XPAR_XTTCPS_0_INTR: u32 = XPS_TTC0_0_INT_ID;

@@ -10,7 +10,7 @@ links = "xil_sf"
 
 [lib]
 name = "xil_sys"
-path = "lib.rs"
+path = "src/lib.rs"
 
 [build-dependencies]
 bindgen = "0.55.1"
