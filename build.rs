@@ -96,8 +96,6 @@ fn main() {
         // Use core instead of std to retain no_std compatibility
         .use_core()
         .ctypes_prefix("cty")
-        // Blacklist the types that have the same name in C and Rust -> no bindings needed.
-        .blacklist_type("u8|u16|u32|u64")
         // Do not generate tests, because I can't be bothered to set up #[test] in the build
         // environment of the cross-compiler
         .layout_tests(false)
