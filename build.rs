@@ -18,6 +18,7 @@ const PYNQ_XCOMPILER_NAME: &str = "arm-none-eabi";
 const LIBC_H_RELATIVE_LOCATION: &str = "libc/usr/include";
 #[cfg(windows)]
 const LIBC_H_RELATIVE_LOCATION: &str = "libc/usr/include/linux";
+const STDINT_H_RELATIVE_LOCATION: &str = "libc/usr/include";
 
 fn guess_xil_sdk_path() -> String {
     let xil_env = env::var(XILINX_SDK_ENV_VAR_NAME);
@@ -77,10 +78,20 @@ fn main() {
         PYNQ_XCOMPILER_OS,
         PYNQ_XCOMPILER_TOOL_NAME,
         PYNQ_XCOMPILER_NAME,
-        LIBC_H_RELATIVE_LOCATION,
     ]
     .iter()
     .collect();
+
+    if !xcompiler_path.exists() {
+        eprintln!("the path for cross-compiler does not exist at {:?}", xcompiler_path);
+        process::exit(1)
+    }
+
+    let libc_h_path: path::PathBuf = xcompiler_path.join(
+        LIBC_H_RELATIVE_LOCATION);
+
+    let stdint_h_path: path::PathBuf = xcompiler_path.join(
+        STDINT_H_RELATIVE_LOCATION);
 
     let bindings = bindgen::Builder::default()
         // Set-up cross-compilation
@@ -89,7 +100,11 @@ fn main() {
         // Include Xilinx cross-compiler libc headers
         .clang_arg(&format!(
             "-I{}",
-            xcompiler_path.to_str().expect("path needs to be UTF-8")
+            libc_h_path.to_str().expect("path needs to be UTF-8")
+        ))
+        .clang_arg(&format!(
+            "-I{}",
+            stdint_h_path.to_str().expect("path needs to be UTF-8")
         ))
         // The input header we would like to generate
         // bindings for.
