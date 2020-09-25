@@ -11,11 +11,19 @@ the static library (libxil.a) with `-mfloat-abi=soft` and replace the library in
 of this repository (libxil_sf.a), then replace the updated include directory at "include/" at root
 of this repository.
 
-# Warning
-The crate currently fails to link the static library (`libxil_sf.a`) right, and requires dependent
-binary to manually link it via `-lxil_sf` from `-L.`.
-
-# Building
+## Building
 - Install the cross-compiler
     * `rustup target add armv7a-none-eabi`.
 - Run `cargo build`.
+
+## List of hacks
+
+### Compiling GCC headers with Clang
+- Some of the Xilinx headers in include/ have been edited to be compilable with LLVM/Clang. The
+edits consist of removals of unreferenced symbols.
+
+
+### Linkage issue
+The crate currently fails to link the static library (`libxil_sf.a`) right, and requires dependent
+binary to manually link it via `-lxil_sf` from `-L.`.
+
