@@ -14,3 +14,6 @@ of this repository.
 # Warning
 The crate currently fails to link the static library (`libxil_sf.a`) right, and requires dependent
 binary to manually link it via `-lxil_sf` from `-L.`.
+
+# Building
+- Run `cargo build`.
