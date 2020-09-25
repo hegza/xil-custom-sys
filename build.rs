@@ -1,17 +1,94 @@
-use std::env;
 use std::fs;
-use std::path::PathBuf;
+use std::path;
+use std::{env, process};
+
+const XILINX_SDK_ENV_VAR_NAME: &str = "XILINX_SDK";
+const DEFAULT_XILINX_SDK_WIN_PATH: &str = "C:\\Xilinx\\SDK\\2019.1";
+const DEFAULT_XILINX_SDK_LIN_PATH: &str = "/opt/Xilinx/SDK/2019.1";
+
+const PYNQ_XCOMPILER_PROVIDER: &str = "gnu";
+const PYNQ_XCOMPILER_ARCH: &str = "aarch32";
+const PYNQ_XCOMPILER_OS: &str = "lin";
+const PYNQ_XCOMPILER_TOOL_NAME: &str = "gcc-arm-none-eabi";
+const PYNQ_XCOMPILER_NAME: &str = "arm-none-eabi";
+const LIBC_H_RELATIVE_LOCATION: &str = "libc/usr/include";
+
+fn guess_xil_sdk_path() -> String {
+    let xil_env = env::var(XILINX_SDK_ENV_VAR_NAME);
+
+    // If XILINX_SDK exists, use that
+    if let Ok(xil_env) = xil_env {
+        return xil_env;
+    }
+
+    if cfg!(windows) {
+        DEFAULT_XILINX_SDK_WIN_PATH.to_owned()
+    } else if cfg!(unix) {
+        DEFAULT_XILINX_SDK_LIN_PATH.to_owned()
+    } else {
+        eprintln!("cannot detect Xilinx SDK location for this OS, please set the XILINX_SDK environment variable to the directory path where Xilinx SDK is installed");
+        process::exit(1)
+    }
+}
+
+fn locate_xil_sdk_path() -> path::PathBuf {
+    let xil_dir = guess_xil_sdk_path();
+    let xil_dir = path::Path::new(&xil_dir);
+
+    if !xil_dir.exists() {
+        let cmd = if cfg!(windows) {
+            "XILINX_SDK=X:\\path\\to\\Xilinx\\SDK"
+        } else {
+            "export XILINX_SDK=/path/to/Xilinx/SDK"
+        };
+        eprintln!(
+            "Xilinx SDK does not exist at path {:?}. Please set the correct path using `{}`",
+            xil_dir, cmd
+        );
+        process::exit(1);
+    }
+
+    if !xil_dir.is_dir() {
+        eprintln!("{:?} is not a directory", xil_dir);
+        process::exit(1)
+    }
+
+    xil_dir.to_path_buf()
+}
 
 fn main() {
     // Tell cargo to invalidate the built crate whenever the wrapper changes.
     println!("cargo:rerun-if-changed=wrapper.h");
+
+    // Locate the Xilinx toolchain directory, or prompt the user
+    let xil_sdk_dir = locate_xil_sdk_path();
+
+    // Like so: "$(XILINX_PATH)/gnu/aarch32/lin/gcc-arm-none-eabi/arm-none-eabi/
+    // libc/usr/include"
+    let xcompiler_path: path::PathBuf = [
+        xil_sdk_dir
+            .into_os_string()
+            .to_str()
+            .expect("path needs to be UTF-8"),
+        PYNQ_XCOMPILER_PROVIDER,
+        PYNQ_XCOMPILER_ARCH,
+        PYNQ_XCOMPILER_OS,
+        PYNQ_XCOMPILER_TOOL_NAME,
+        PYNQ_XCOMPILER_NAME,
+        LIBC_H_RELATIVE_LOCATION,
+    ]
+    .iter()
+    .collect();
 
     let bindings = bindgen::Builder::default()
         // Set-up cross-compilation
         .clang_arg("-target")
         .clang_arg("armv7a-none-eabi")
         // Include Xilinx cross-compiler libc headers
-        .clang_arg("-I/mnt/e/provisional/Software/Xilinx_WSL1/SDK/2019.1/gnu/aarch32/lin/gcc-arm-none-eabi/arm-none-eabi/libc/usr/include")
+        .clang_arg(&format!(
+            "-I{}",
+            xcompiler_path.to_str().expect("path needs to be UTF-8")
+        ))
         // The input header we would like to generate
         // bindings for.
         .header("wrapper.h")
@@ -22,7 +99,8 @@ fn main() {
         .ctypes_prefix("cty")
         // Blacklist the types that have the same name in C and Rust -> no bindings needed.
         .blacklist_type("u8|u16|u32|u64")
-        // Do not generate tests, because I can't be bothered to set up #[test] in the build environment of the cross-compiler
+        // Do not generate tests, because I can't be bothered to set up #[test] in the build
+        // environment of the cross-compiler
         .layout_tests(false)
         // Tell cargo to invalidate the built crate whenever any of the
         // included header files changed.
@@ -33,7 +111,7 @@ fn main() {
         .expect("Unable to generate bindings");
 
     // Write the bindings to the $OUT_DIR/xil.rs file.
-    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let out_path = path::PathBuf::from(env::var("OUT_DIR").unwrap());
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
@@ -42,10 +120,10 @@ fn main() {
     // to dependencies TODO: allow overriding the library via an environment
     // variable
     const LIB_NAME: &str = "libxil_sf.a";
-    let from: PathBuf = [&env::var("CARGO_MANIFEST_DIR").unwrap(), LIB_NAME]
+    let from: path::PathBuf = [&env::var("CARGO_MANIFEST_DIR").unwrap(), LIB_NAME]
         .iter()
         .collect();
-    let to: PathBuf = [&env::var("OUT_DIR").unwrap(), LIB_NAME].iter().collect();
+    let to: path::PathBuf = [&env::var("OUT_DIR").unwrap(), LIB_NAME].iter().collect();
     fs::copy(from, to).unwrap();
 
     // Allow dependent libraries to discover the copied static library
