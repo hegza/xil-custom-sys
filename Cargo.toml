@@ -13,7 +13,7 @@ name = "xil_sys"
 path = "lib.rs"
 
 [build-dependencies]
-bindgen = "0.53.1"
+bindgen = "0.55.1"
 
 [dependencies]
 # cty contains aliases to C-types for generated bindings

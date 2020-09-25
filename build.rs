@@ -26,7 +26,7 @@ fn guess_xil_sdk_path() -> String {
     } else if cfg!(unix) {
         DEFAULT_XILINX_SDK_LIN_PATH.to_owned()
     } else {
-        eprintln!("cannot detect Xilinx SDK location for this OS, please set the XILINX_SDK environment variable to the directory path where Xilinx SDK is installed");
+        eprintln!("cannot detect Xilinx SDK location for this OS, please make sure Xilinx SDK is installed and set the XILINX_SDK environment variable to the directory path where Xilinx SDK is installed");
         process::exit(1)
     }
 }
@@ -42,7 +42,7 @@ fn locate_xil_sdk_path() -> path::PathBuf {
             "export XILINX_SDK=/path/to/Xilinx/SDK"
         };
         eprintln!(
-            "Xilinx SDK does not exist at path {:?}. Please set the correct path using `{}`",
+            "Xilinx SDK does not exist at path {:?}. Please make sure Xilinx SDK is installed, and set the correct path using `{}`",
             xil_dir, cmd
         );
         process::exit(1);
