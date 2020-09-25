@@ -3,8 +3,11 @@ use std::path;
 use std::{env, process};
 
 const XILINX_SDK_ENV_VAR_NAME: &str = "XILINX_SDK";
-const DEFAULT_XILINX_SDK_WIN_PATH: &str = "/c/Xilinx/SDK/2019.1";
-const DEFAULT_XILINX_SDK_LIN_PATH: &str = "/opt/Xilinx/SDK/2019.1";
+const XILINX_ENV_VAR_NAME: &str = "XILINX";
+const DEFAULT_XILINX_WIN_PATH: &str = "/c/Xilinx";
+const DEFAULT_XILINX_LIN_PATH: &str = "/opt/Xilinx";
+const SDK_DIR_NAME: &str = "SDK";
+const DEFAULT_XILINX_SDK_VERSION: &str = "2019.1";
 
 const PYNQ_XCOMPILER_PROVIDER: &str = "gnu";
 const PYNQ_XCOMPILER_ARCH: &str = "aarch32";
@@ -20,33 +23,91 @@ const LIBC_H_RELATIVE_LOCATION: &str = "libc/usr/include";
 const LIBC_H_RELATIVE_LOCATION: &str = "libc/usr/include/linux";
 const STDINT_H_RELATIVE_LOCATION: &str = "libc/usr/include";
 
-fn guess_xil_sdk_path() -> String {
-    let xil_env = env::var(XILINX_SDK_ENV_VAR_NAME);
-
-    // If XILINX_SDK exists, use that
-    if let Ok(xil_env) = xil_env {
-        return xil_env;
+/// Guess the Xilinx SDK install path like ".../Xilinx/SDK/version"
+fn guess_xil_sdk_path() -> path::PathBuf {
+    // If XILINX_SDK environment variable exists, use that
+    let xil_sdk_env = env::var(XILINX_SDK_ENV_VAR_NAME);
+    if let Ok(xil_sdk_env) = xil_sdk_env {
+        return path::Path::new(&xil_sdk_env).to_path_buf();
     }
 
-    if cfg!(windows) {
-        DEFAULT_XILINX_SDK_WIN_PATH.to_owned()
-    } else if cfg!(unix) {
-        DEFAULT_XILINX_SDK_LIN_PATH.to_owned()
-    } else {
-        eprintln!("cannot detect Xilinx SDK location for this OS, please make sure Xilinx SDK is installed and set the XILINX_SDK environment variable to the directory path where Xilinx SDK is installed");
+    // Like ".../Xilinx"
+    let xil_dir =
+        // If XILINX environment variable exists, use that
+        if let Ok(xil_env) = env::var(XILINX_ENV_VAR_NAME) {
+            xil_env
+        }
+        // Otherwise try to guess a path based on platform
+        else if  cfg!(windows) {
+            DEFAULT_XILINX_WIN_PATH.to_owned()
+        } else if cfg!(not(windows)) {
+            DEFAULT_XILINX_LIN_PATH.to_owned()
+        } else {
+            eprintln!("cannot detect Xilinx SDK location for this OS, please make sure Xilinx SDK is installed and set the XILINX_SDK environment variable to the directory path where Xilinx SDK is installed");
+            process::exit(1)
+        };
+    let xil_dir = path::Path::new(&xil_dir);
+
+    let no_tools_at_all = !xil_dir.exists();
+    // Add to comprise ".../Xilinx/SDK"
+    let sdk_parent_dir = xil_dir.join(SDK_DIR_NAME).to_owned();
+
+    if !sdk_parent_dir.exists() {
+        eprintln!("cannot detect Xilinx SDK at {:?}, please make sure Xilinx SDK is installed and set the XILINX_SDK environment variable to the directory path where Xilinx SDK is installed", sdk_parent_dir);
+        if no_tools_at_all {
+            eprintln!("cannot detect any Xilinx tools at {:?}", xil_dir);
+        }
         process::exit(1)
+    }
+
+    // Then try to guess a version
+    let sdk_dir = sdk_parent_dir.join(DEFAULT_XILINX_SDK_VERSION);
+    if sdk_dir.exists() {
+        sdk_dir
+    } else {
+        guess_xil_sdk_ver_path(&sdk_parent_dir)
     }
 }
 
+fn guess_xil_sdk_ver_path(xil_sdk_parent_dir: &path::Path) -> path::PathBuf {
+    let mut entries = fs::read_dir(xil_sdk_parent_dir)
+        .expect(&format!("cannot read contents of {:?}", xil_sdk_parent_dir))
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.file_name())
+        // Filter out anything that doesn't start with a number
+        .filter(|name| {
+            name.to_str().map_or(false, |name| {
+                name.chars().nth(0).map_or(false, |c| c.is_digit(10))
+            })
+        })
+        .collect::<Vec<_>>();
+
+    // Sorts by filename, smallest number first
+    entries.sort();
+
+    // Take the last element, which is the latest version
+    match entries.last() {
+        Some(name) => xil_sdk_parent_dir.join(name),
+        None => {
+            eprintln!(
+                "Xilinx SDK directory {:?} contains no installed version",
+                xil_sdk_parent_dir
+            );
+            process::exit(1)
+        }
+    }
+}
+
+/// Returns the Xilinx SDK path like ".../Xilinx/SDK/<ver>"
 fn locate_xil_sdk_path() -> path::PathBuf {
     let xil_dir = guess_xil_sdk_path();
     let xil_dir = path::Path::new(&xil_dir);
 
     if !xil_dir.exists() {
-        let cmd = "export XILINX_SDK=/path/to/Xilinx/SDK";
+        let export_cmd = "export XILINX_SDK=/path/to/Xilinx/SDK/version";
         eprintln!(
             "Xilinx SDK does not exist at path {:?}. Please make sure Xilinx SDK is installed, and set the correct path using `{}`",
-            xil_dir, cmd
+            xil_dir, export_cmd
         );
         process::exit(1);
     }
@@ -63,7 +124,8 @@ fn main() {
     // Tell cargo to invalidate the built crate whenever the wrapper changes.
     println!("cargo:rerun-if-changed=wrapper.h");
 
-    // Locate the Xilinx toolchain directory, or prompt the user
+    // Locate the Xilinx toolchain directory (like ".../Xilinx/SDK/2019.1"), or
+    // prompt the user for it
     let xil_sdk_dir = locate_xil_sdk_path();
 
     // Like so: "$(XILINX_PATH)/gnu/aarch32/lin/gcc-arm-none-eabi/arm-none-eabi/
@@ -83,15 +145,16 @@ fn main() {
     .collect();
 
     if !xcompiler_path.exists() {
-        eprintln!("the path for cross-compiler does not exist at {:?}", xcompiler_path);
+        eprintln!(
+            "the path for cross-compiler does not exist at {:?}",
+            xcompiler_path
+        );
         process::exit(1)
     }
 
-    let libc_h_path: path::PathBuf = xcompiler_path.join(
-        LIBC_H_RELATIVE_LOCATION);
+    let libc_h_path: path::PathBuf = xcompiler_path.join(LIBC_H_RELATIVE_LOCATION);
 
-    let stdint_h_path: path::PathBuf = xcompiler_path.join(
-        STDINT_H_RELATIVE_LOCATION);
+    let stdint_h_path: path::PathBuf = xcompiler_path.join(STDINT_H_RELATIVE_LOCATION);
 
     let bindings = bindgen::Builder::default()
         // Set-up cross-compilation
