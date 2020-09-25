@@ -7,7 +7,6 @@ extern "C" {
 
 #include <ctype.h>
 #include <string.h>
-#include <stdarg.h>
 #include "xil_types.h"
 #include "xparameters.h"
 
