@@ -104,7 +104,7 @@ pub unsafe fn XTtcPs_ClearInterruptStatus(InstancePtr: *mut XTtcPs, InterruptMas
  *
  * # Safety
  * Passing a null-ptr as `InstancePtr`is undefined behavior.
- **************************************
+ *************************************
  * **** */
 pub unsafe fn XTtcPs_Start(InstancePtr: *mut XTtcPs) {
     InstWriteReg(

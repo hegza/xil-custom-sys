@@ -47,7 +47,7 @@ fn main() {
         .collect();
     let to: PathBuf = [&env::var("OUT_DIR").unwrap(), LIB_NAME].iter().collect();
     fs::copy(from, to).unwrap();
-    
+
     // Allow dependent libraries to discover the copied static library
     println!("cargo:root={}", env::var("OUT_DIR").unwrap());
 
