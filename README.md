@@ -16,4 +16,6 @@ The crate currently fails to link the static library (`libxil_sf.a`) right, and 
 binary to manually link it via `-lxil_sf` from `-L.`.
 
 # Building
+- Install the cross-compiler
+    * `rustup target add armv7a-none-eabi`.
 - Run `cargo build`.
