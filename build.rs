@@ -8,13 +8,16 @@ const DEFAULT_XILINX_SDK_LIN_PATH: &str = "/opt/Xilinx/SDK/2019.1";
 
 const PYNQ_XCOMPILER_PROVIDER: &str = "gnu";
 const PYNQ_XCOMPILER_ARCH: &str = "aarch32";
-#[cfg(unix)]
+#[cfg(not(windows))]
 const PYNQ_XCOMPILER_OS: &str = "lin";
-#[cfg(win)]
+#[cfg(windows)]
 const PYNQ_XCOMPILER_OS: &str = "nt";
 const PYNQ_XCOMPILER_TOOL_NAME: &str = "gcc-arm-none-eabi";
 const PYNQ_XCOMPILER_NAME: &str = "arm-none-eabi";
+#[cfg(not(windows))]
 const LIBC_H_RELATIVE_LOCATION: &str = "libc/usr/include";
+#[cfg(windows)]
+const LIBC_H_RELATIVE_LOCATION: &str = "libc/usr/include/linux";
 
 fn guess_xil_sdk_path() -> String {
     let xil_env = env::var(XILINX_SDK_ENV_VAR_NAME);
