@@ -3,12 +3,15 @@ use std::path;
 use std::{env, process};
 
 const XILINX_SDK_ENV_VAR_NAME: &str = "XILINX_SDK";
-const DEFAULT_XILINX_SDK_WIN_PATH: &str = "C:\\Xilinx\\SDK\\2019.1";
+const DEFAULT_XILINX_SDK_WIN_PATH: &str = "/c/Xilinx/SDK/2019.1";
 const DEFAULT_XILINX_SDK_LIN_PATH: &str = "/opt/Xilinx/SDK/2019.1";
 
 const PYNQ_XCOMPILER_PROVIDER: &str = "gnu";
 const PYNQ_XCOMPILER_ARCH: &str = "aarch32";
+#[cfg(unix)]
 const PYNQ_XCOMPILER_OS: &str = "lin";
+#[cfg(win)]
+const PYNQ_XCOMPILER_OS: &str = "nt";
 const PYNQ_XCOMPILER_TOOL_NAME: &str = "gcc-arm-none-eabi";
 const PYNQ_XCOMPILER_NAME: &str = "arm-none-eabi";
 const LIBC_H_RELATIVE_LOCATION: &str = "libc/usr/include";
@@ -36,11 +39,7 @@ fn locate_xil_sdk_path() -> path::PathBuf {
     let xil_dir = path::Path::new(&xil_dir);
 
     if !xil_dir.exists() {
-        let cmd = if cfg!(windows) {
-            "XILINX_SDK=X:\\path\\to\\Xilinx\\SDK"
-        } else {
-            "export XILINX_SDK=/path/to/Xilinx/SDK"
-        };
+        let cmd = "export XILINX_SDK=/path/to/Xilinx/SDK";
         eprintln!(
             "Xilinx SDK does not exist at path {:?}. Please make sure Xilinx SDK is installed, and set the correct path using `{}`",
             xil_dir, cmd
