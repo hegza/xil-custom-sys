@@ -43,7 +43,7 @@ fn guess_xil_sdk_path() -> path::PathBuf {
         } else if cfg!(not(windows)) {
             DEFAULT_XILINX_LIN_PATH.to_owned()
         } else {
-            eprintln!("cannot detect Xilinx SDK location for this OS, please make sure Xilinx SDK is installed and set the XILINX_SDK environment variable to the directory path where Xilinx SDK is installed");
+            eprintln!("cannot detect Xilinx SDK location for this OS, please make sure Xilinx SDK is installed and set the XILINX_SDK environment variable to the directory path where Xilinx SDK is installed, like so: XILINX_SDK=.../Xilinx/SDK/version");
             process::exit(1)
         };
     let xil_dir = path::Path::new(&xil_dir);
@@ -53,7 +53,7 @@ fn guess_xil_sdk_path() -> path::PathBuf {
     let sdk_parent_dir = xil_dir.join(SDK_DIR_NAME).to_owned();
 
     if !sdk_parent_dir.exists() {
-        eprintln!("cannot detect Xilinx SDK at {:?}, please make sure Xilinx SDK is installed and set the XILINX_SDK environment variable to the directory path where Xilinx SDK is installed", sdk_parent_dir);
+        eprintln!("cannot detect Xilinx SDK at {:?}, please make sure Xilinx SDK is installed and set the XILINX_SDK environment variable to the directory path where Xilinx SDK is installed, like so: XILINX_SDK=.../Xilinx/SDK/version", sdk_parent_dir);
         if no_tools_at_all {
             eprintln!("cannot detect any Xilinx tools at {:?}", xil_dir);
         }
