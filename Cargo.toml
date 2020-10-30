@@ -14,6 +14,7 @@ path = "lib.rs"
 
 [build-dependencies]
 bindgen = "0.55.1"
+cc = "1.0.61"
 
 [dependencies]
 # cty contains aliases to C-types for generated bindings

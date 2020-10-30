@@ -1,6 +1,4 @@
-use std::fs;
-use std::path;
-use std::{env, process};
+use std::{fs, path, ffi, env, process};
 
 const XILINX_SDK_ENV_VAR_NAME: &str = "XILINX_SDK";
 const XILINX_ENV_VAR_NAME: &str = "XILINX";
@@ -22,6 +20,15 @@ const LIBC_H_RELATIVE_LOCATION: &str = "libc/usr/include";
 #[cfg(windows)]
 const LIBC_H_RELATIVE_LOCATION: &str = "libc/usr/include/linux";
 const STDINT_H_RELATIVE_LOCATION: &str = "libc/usr/include";
+
+const LIBRARY_NAME: &str = "xil_sf";
+
+static C_FLAGS: &[&str] = &[
+   "-mcpu=cortex-a9",
+   "-mfpu=vfpv3",
+   "-mfloat-abi=soft",
+   "-nostartfiles",
+];
 
 /// Guess the Xilinx SDK install path like ".../Xilinx/SDK/version"
 fn guess_xil_sdk_path() -> path::PathBuf {
@@ -120,10 +127,103 @@ fn locate_xil_sdk_path() -> path::PathBuf {
     xil_dir.to_path_buf()
 }
 
-fn main() {
-    // Tell cargo to invalidate the built crate whenever the wrapper changes.
-    println!("cargo:rerun-if-changed=wrapper.h");
+/// Get paths to compile
+fn get_src_paths() -> Vec<path::PathBuf> {
+    // How on earth you make a globally accessible Path in rust? Is it even possible?
+    // I'll make a function that returns a constant pathbuf then
+    let root_path = path::PathBuf::from("libsrc");
+    let sub_paths = root_path.read_dir().expect("Unable to read libsrc directory").filter_map(|entry| {
+        let entry = entry.expect("Unable to read file from directory");
+        let path = entry.path();
 
+        // Ignore files at root-level
+        if path.is_file() {
+            return None;
+        }
+
+        // All paths include this intermediary src/
+        let path = path.join("src/");
+
+        Some(path.clone())
+    }).collect::<Vec<path::PathBuf>>();
+
+    sub_paths
+}
+
+fn src_files(path: &path::PathBuf) -> Vec<path::PathBuf> {
+    let ignore_files = vec![];
+
+    let c_ext = Some(ffi::OsStr::new("c"));
+    let asm_ext = Some(ffi::OsStr::new("S"));
+
+    if path.is_file() {  // Single files can be compiled too, though idk why someone wants that
+        let ext = path.extension();
+        match ext {
+            e if e==c_ext => {return vec![path.clone()];},
+            _ => panic!("Invalid file extension on source file."),
+        }
+    }
+    else if path.is_dir() {
+        path.read_dir()
+            .expect(&format!("Unable to read directory: {}", path.to_str().unwrap()))
+            .filter_map(|entry| {
+                let entry = entry.expect("Unable to read a file from directory");
+
+                let path = entry.path();
+
+                // Ignore directories
+                if path.is_dir() {
+                    return None;
+                }
+
+                // Ignore Files
+                if ignore_files.contains(&path.file_name()) {
+                    return None;
+                }
+
+                // We only care about .c and .S
+                let ext = path.extension();
+                if ext == c_ext || ext == asm_ext {
+                    Some(path.clone())
+                } else {
+                    None
+                }
+            }).collect::<Vec<path::PathBuf>>()
+    }
+    else {panic!("Uh oh")}
+}
+
+fn compile() {
+    let mut c_files = Vec::new();
+    let mut builder = cc::Build::new();
+
+    // Add the root include directory
+    builder.include("include/");
+
+    for path in get_src_paths().iter() {
+        let c = src_files(path);
+        c_files.extend(c);
+        builder.include(&path);
+    }
+
+    builder.archiver("arm-none-eabi-ar")
+    .pic(false)
+    .warnings(false);
+
+
+    for flag in C_FLAGS {
+        builder.flag(flag);
+    }
+
+    // Compile C Files
+    builder.compiler("arm-none-eabi-gcc")
+        .files(c_files)
+        .opt_level_str("2")
+        .flag("-c")
+        .compile(LIBRARY_NAME);
+}
+
+fn generate_bindings() {
     // Locate the Xilinx toolchain directory (like ".../Xilinx/SDK/2019.1"), or
     // prompt the user for it
     let xil_sdk_dir = locate_xil_sdk_path();
@@ -194,25 +294,15 @@ fn main() {
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
 
-    // Copy the libxil_sf.a library into the target directory to make it available
-    // to dependencies TODO: allow overriding the library via an environment
-    // variable
-    const LIB_NAME: &str = "libxil_sf.a";
-    let from: path::PathBuf = [&env::var("CARGO_MANIFEST_DIR").unwrap(), LIB_NAME]
-        .iter()
-        .collect();
-    let to: path::PathBuf = [&env::var("OUT_DIR").unwrap(), LIB_NAME].iter().collect();
-    fs::copy(from, to).unwrap();
+}
 
-    // Allow dependent libraries to discover the copied static library
-    println!("cargo:root={}", env::var("OUT_DIR").unwrap());
+fn main() {
+    // Tell cargo to invalidate the built crate whenever the wrapper changes.
+    println!("cargo:rerun-if-changed=wrapper.h");
 
-    // Find the static library (libxil_sf.a) in the out directory
-    println!(
-        "cargo:rustc-link-search=native={}",
-        env::var("OUT_DIR").unwrap()
-    );
-    // Link the libxil_sf.a in the out directory
-    // FIXME: I believe this does not currently link it right
-    println!("cargo:rustc-link-lib=static=xil_sf");
+    // Generate bindings.rs
+    generate_bindings();
+
+    // Compile libxil.a
+    compile();
 }
