@@ -141,7 +141,7 @@ typedef int sint32;
 
 typedef intptr_t INTPTR;
 typedef uintptr_t UINTPTR;
-typedef ptrdiff_t PTRDIFF;
+// typedef ptrdiff_t PTRDIFF;
 /** @}*/
 #if !defined(LONG) || !defined(ULONG)
 typedef long LONG;
