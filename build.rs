@@ -15,9 +15,6 @@ const PYNQ_XCOMPILER_OS: &str = "lin";
 const PYNQ_XCOMPILER_OS: &str = "nt";
 const PYNQ_XCOMPILER_TOOL_NAME: &str = "gcc-arm-none-eabi";
 const PYNQ_XCOMPILER_NAME: &str = "arm-none-eabi";
-#[cfg(not(windows))]
-const LIBC_H_RELATIVE_LOCATION: &str = "libc/usr/include";
-#[cfg(windows)]
 const LIBC_H_RELATIVE_LOCATION: &str = "libc/usr/include/linux";
 const STDINT_H_RELATIVE_LOCATION: &str = "libc/usr/include";
 
